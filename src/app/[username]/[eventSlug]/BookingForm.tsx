@@ -1,5 +1,6 @@
 'use client'
 
+import { formatInTimeZone } from 'date-fns-tz'
 import { useMemo, useState } from 'react'
 import type { PublicSlot } from '@/lib/scheduling'
 
@@ -12,8 +13,23 @@ interface Props {
   price: number
 }
 
+const timezoneLabels: Record<string, string> = {
+  'America/Sao_Paulo': 'São Paulo',
+  'America/Manaus': 'Manaus',
+  'America/Fortaleza': 'Fortaleza',
+  'America/Recife': 'Recife',
+}
+
+function timezoneLabel(timezone: string) {
+  return timezoneLabels[timezone] ?? timezone.split('/').at(-1)?.replace(/_/g, ' ') ?? timezone
+}
+
 export default function BookingForm({ eventId, duration, timezone, slots, requiresPayment, price }: Props) {
   const firstDay = slots[0]?.dateKey ?? ''
+  const [viewerTimezone] = useState(() => {
+    if (typeof window === 'undefined') return timezone
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || timezone
+  })
   const [selectedDay, setSelectedDay] = useState(firstDay)
   const [selectedStartTime, setSelectedStartTime] = useState(slots[0]?.startTime ?? '')
   const [step, setStep] = useState<'time' | 'details' | 'done'>('time')
@@ -32,6 +48,14 @@ export default function BookingForm({ eventId, duration, timezone, slots, requir
   const visibleSlots = slots.filter((slot) => slot.dateKey === selectedDay)
   const selectedSlot = slots.find((slot) => slot.startTime === selectedStartTime) ?? visibleSlots[0] ?? slots[0]
   const displayPrice = price > 0 ? `R$${(price / 100).toFixed(0)}` : 'gratis'
+  const showViewerTimezone = viewerTimezone !== timezone
+
+  const slotTimeLabel = (slot: PublicSlot) => {
+    if (!showViewerTimezone) return slot.timeLabel
+
+    const viewerTime = formatInTimeZone(slot.startTime, viewerTimezone, 'HH:mm')
+    return `${slot.timeLabel} em ${timezoneLabel(timezone)} / ${viewerTime} no seu fuso`
+  }
 
   const selectDay = (dateKey: string) => {
     const firstSlot = slots.find((slot) => slot.dateKey === dateKey)
@@ -107,7 +131,7 @@ export default function BookingForm({ eventId, duration, timezone, slots, requir
             </div>
             <div>
               <div className="font-bold text-slate-500">Horario</div>
-              <div className="mt-1 font-black">{selectedSlot.timeLabel}</div>
+              <div className="mt-1 font-black">{slotTimeLabel(selectedSlot)}</div>
             </div>
             <div>
               <div className="font-bold text-slate-500">Duracao</div>
@@ -164,14 +188,14 @@ export default function BookingForm({ eventId, duration, timezone, slots, requir
                       : 'border-slate-200 text-slate-700 hover:border-slate-400'
                   }`}
                 >
-                  {slot.timeLabel}
+                  {slotTimeLabel(slot)}
                 </button>
               ))}
             </div>
           </div>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            <strong className="text-slate-950">Resumo:</strong> {selectedSlot.dateLabel} as {selectedSlot.timeLabel}, {duration} minutos, fuso {timezone}.
+            <strong className="text-slate-950">Resumo:</strong> {selectedSlot.dateLabel} as {slotTimeLabel(selectedSlot)}, {duration} minutos, fuso {timezone}.
             {requiresPayment && <span className="block pt-1 font-bold text-slate-950">Pagamento Pix: {displayPrice} antes da confirmacao final.</span>}
           </div>
 
@@ -194,7 +218,7 @@ export default function BookingForm({ eventId, duration, timezone, slots, requir
           </button>
 
           <div className="mb-5 rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-            <strong className="text-slate-950">Selecionado:</strong> {selectedSlot.dateLabel} as {selectedSlot.timeLabel}
+            <strong className="text-slate-950">Selecionado:</strong> {selectedSlot.dateLabel} as {slotTimeLabel(selectedSlot)}
             {requiresPayment && <span className="block pt-1 font-bold text-slate-950">Voce sera levado ao checkout Pix para pagar {displayPrice}.</span>}
           </div>
 

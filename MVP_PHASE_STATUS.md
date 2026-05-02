@@ -92,6 +92,14 @@ Claude review flagged that the first-pass MVP looked complete but still had bloc
 - Magic-link sign-in email now uses a pt-BR Resend template with the CTA `Entrar no AgendaFacil`.
 - Plan checkout now uses real recurring Stripe Price IDs from `STRIPE_PRICE_PRO` and `STRIPE_PRICE_AGENCY`; no inline fallback prices are invented.
 - Stripe webhook now also handles `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
+- Public booking slot labels now show the customer's detected timezone alongside the professional timezone when they differ.
+- `/api/booking` rate limiting now uses Vercel KV / Upstash REST when configured, with a one-warning in-memory fallback for local development.
+- Bookings now snapshot `amount` at create time so dashboard revenue does not drift when event prices change.
+- Tailwind Typography is installed and wired through Tailwind v4 for legal-page `prose` styling.
+- Pro/Agency users can open Stripe Billing Portal from `/dashboard/payments`.
+- `/dashboard/bookings` now lists Hoje, Esta semana, and Anteriores bookings, with soft cancellation, cancellation email, and Stripe refund attempt.
+- Availability now supports multiple time windows per weekday, preserving the existing API slot payload.
+- Playwright public smoke tests were added for the homepage, demo flow, and 9 SEO pages.
 
 External Week 3 and Week 4 tasks still require accounts and real-world execution outside this sandbox:
 
@@ -145,6 +153,8 @@ STRIPE_PRICE_AGENCY
 STRIPE_WEBHOOK_SECRET
 RESEND_API_KEY
 WHATSAPP_API_TOKEN
+KV_REST_API_URL
+KV_REST_API_TOKEN
 ```
 
 ## Recommended Next Runtime Step
@@ -153,10 +163,12 @@ Move or copy this build into a writable git repo, add the production environment
 
 ## Outstanding for Claude
 
+See `CLAUDE_ISSUE_LOG.md` for the focused handoff and blocker log.
+
 The follow-up punch-list code has been implemented and verified in this writable copy, but this Codex session could not publish it to `C:\Users\chand\projects\saas-clone-br-calendly` or GitHub:
 
 - Direct patch to `C:\Users\chand\projects\saas-clone-br-calendly` was rejected because the path is outside the writable sandbox.
-- `git ls-remote https://github.com/chandananvithahr/agendafacil-br.git refs/heads/master` failed with `SEC_E_NO_CREDENTIALS`.
+- `git push origin master` from the local handoff commit failed with `SEC_E_NO_CREDENTIALS`.
 - `gh auth status` failed because `C:\Users\chand\AppData\Roaming\GitHub CLI\config.yml` is access denied.
 - GitHub connector `_update_file` failed with `403 Resource not accessible by integration`.
 
@@ -172,6 +184,34 @@ To land it, copy the changed files from this writable build copy into the real r
 
 ```powershell
 git add -A
-git commit -m "feat: dashboard prefetch + pt-BR magic-link + subscription mode"
+git commit -m "feat: complete medium launch surfaces"
 git push origin master
+```
+
+Additional blockers from the 8-task session:
+
+- `npx prisma migrate dev --name add_booking_amount` could not be run against a real database in this sandbox; `prisma/migrations/20260502090000_add_booking_amount/migration.sql` was added manually and `prisma validate` passed.
+- `npm.cmd run build` reached `Compiled successfully`, then failed with `Error: spawn EPERM`.
+- `npm.cmd run test:e2e` first hit a locked temp cache; after pointing `TEMP`/`TMP` at the writable workspace, it failed with `Error: spawn EPERM` when Playwright tried to spawn its web server.
+
+## 2026-05-02 Eight-Task Status
+
+Shipped in this writable copy:
+
+- Task 1 timezone display: customer IANA timezone detection and dual-time slot labels. Approx time: 25 min.
+- Task 2 Vercel KV rate limiter: `@vercel/kv`, KV sliding-window counters, in-memory fallback, README env docs. Approx time: 25 min.
+- Task 3 booking amount snapshot: `Booking.amount`, create-time amount write, dashboard revenue sum, migration SQL. Approx time: 20 min.
+- Task 4 Tailwind Typography: dependency installed and Tailwind v4 `@plugin` wired. Approx time: 10 min.
+- Task 5 Stripe portal: authenticated portal API and dashboard management button. Approx time: 20 min.
+- Task 6 bookings list: `/dashboard/bookings`, cancel API, cancellation email, refund attempt, dashboard link. Approx time: 45 min.
+- Task 7 multiple availability windows: per-day window arrays, add/remove UI, existing API compatibility verified. Approx time: 25 min.
+- Task 8 Playwright smoke tests: config, `test:e2e`, landing/demo test, 9-route SEO test. Approx time: 25 min.
+
+Final verification to rerun after copying into the real repo:
+
+```powershell
+npm.cmd run lint
+npx.cmd --no-install tsc --noEmit
+$env:DATABASE_URL='postgresql://user:pass@localhost:5432/agendafacil'; $env:DIRECT_URL=$env:DATABASE_URL; npx.cmd --no-install prisma validate
+npm.cmd run test:e2e
 ```

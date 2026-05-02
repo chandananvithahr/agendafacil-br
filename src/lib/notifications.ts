@@ -39,6 +39,34 @@ export async function sendBookingConfirmation(booking: BookingNotification) {
   return { sent: true }
 }
 
+export function bookingCancellationEmailHtml(booking: BookingNotification) {
+  return `
+    <div style="font-family:Arial,sans-serif;line-height:1.5;color:#0f172a">
+      <h1>Agendamento cancelado</h1>
+      <p>Ola, ${booking.guestName}.</p>
+      <p>Seu horario para <strong>${booking.eventTitle}</strong> com ${booking.professionalName} foi cancelado.</p>
+      <p><strong>Data:</strong> ${booking.startTime.toLocaleString('pt-BR', { timeZone: booking.timezone })}</p>
+      <p>Se precisar marcar um novo horario, acesse novamente a pagina de agendamento do profissional.</p>
+    </div>
+  `
+}
+
+export async function sendBookingCancellation(booking: BookingNotification) {
+  if (!process.env.RESEND_API_KEY) {
+    return { sent: false, reason: 'RESEND_API_KEY nao configurada' }
+  }
+
+  const resend = new Resend(process.env.RESEND_API_KEY)
+  await resend.emails.send({
+    from: getMailFrom(),
+    to: booking.guestEmail,
+    subject: `Agendamento cancelado: ${booking.eventTitle}`,
+    html: bookingCancellationEmailHtml(booking),
+  })
+
+  return { sent: true }
+}
+
 export async function queueWhatsAppReminder(booking: BookingNotification) {
   if (!process.env.WHATSAPP_API_TOKEN || !booking.guestPhone) {
     return { queued: false, reason: 'WhatsApp nao configurado' }

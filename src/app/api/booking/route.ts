@@ -26,7 +26,7 @@ function stripeClient() {
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers)
-  const rateLimit = checkRateLimit(`booking:${ip}`, 8, 60_000)
+  const rateLimit = await checkRateLimit(`booking:${ip}`, 8, 60_000)
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: 'Muitas tentativas. Aguarde um pouco e tente novamente.' },
@@ -95,6 +95,7 @@ export async function POST(req: NextRequest) {
         notes,
         status: requiresPayment ? 'PENDING' : 'CONFIRMED',
         paymentStatus: requiresPayment ? 'UNPAID' : 'PAID',
+        amount: requiresPayment ? event.price : 0,
       },
     })
 

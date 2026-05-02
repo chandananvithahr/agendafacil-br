@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 
 const days = [
   ['Domingo', 0],
@@ -19,18 +19,82 @@ type AvailabilitySlot = {
   endTime: string
 }
 
+type TimeWindow = {
+  startTime: string
+  endTime: string
+}
+
+type AvailabilityState = Record<number, TimeWindow[]>
+
+const defaultWindow: TimeWindow = { startTime: '09:00', endTime: '17:00' }
+const splitDayWindow: TimeWindow = { startTime: '14:00', endTime: '18:00' }
+
+function buildInitialState(initialSlots: AvailabilitySlot[]) {
+  const state = days.reduce<AvailabilityState>((current, [, day]) => {
+    current[day] = []
+    return current
+  }, {})
+
+  for (const slot of initialSlots) {
+    state[slot.dayOfWeek] ??= []
+    state[slot.dayOfWeek].push({ startTime: slot.startTime, endTime: slot.endTime })
+  }
+
+  return state
+}
+
 export default function AvailabilityForm({ initialSlots }: { initialSlots: AvailabilitySlot[] }) {
-  const [startTime, setStartTime] = useState(initialSlots[0]?.startTime ?? '09:00')
-  const [endTime, setEndTime] = useState(initialSlots[0]?.endTime ?? '17:00')
-  const [enabledDays, setEnabledDays] = useState<number[]>(initialSlots.map((slot) => slot.dayOfWeek).sort())
+  const [availability, setAvailability] = useState<AvailabilityState>(() => buildInitialState(initialSlots))
   const [status, setStatus] = useState('')
   const [saving, setSaving] = useState(false)
+
+  const slots = useMemo(() => {
+    return days.flatMap(([, dayOfWeek]) => (
+      availability[dayOfWeek].map((window) => ({ dayOfWeek, ...window }))
+    ))
+  }, [availability])
+  const slotLimitReached = slots.length >= 14
+
+  function toggleDay(dayOfWeek: number) {
+    setAvailability((current) => ({
+      ...current,
+      [dayOfWeek]: current[dayOfWeek].length ? [] : [{ ...defaultWindow }],
+    }))
+  }
+
+  function addWindow(dayOfWeek: number) {
+    if (slotLimitReached) {
+      setStatus('O limite do MVP e 14 janelas por semana.')
+      return
+    }
+
+    setAvailability((current) => ({
+      ...current,
+      [dayOfWeek]: [...current[dayOfWeek], { ...splitDayWindow }],
+    }))
+  }
+
+  function removeWindow(dayOfWeek: number, index: number) {
+    setAvailability((current) => ({
+      ...current,
+      [dayOfWeek]: current[dayOfWeek].filter((_, currentIndex) => currentIndex !== index),
+    }))
+  }
+
+  function updateWindow(dayOfWeek: number, index: number, field: keyof TimeWindow, value: string) {
+    setAvailability((current) => ({
+      ...current,
+      [dayOfWeek]: current[dayOfWeek].map((window, currentIndex) => (
+        currentIndex === index ? { ...window, [field]: value } : window
+      )),
+    }))
+  }
 
   async function saveAvailability() {
     setSaving(true)
     setStatus('')
+
     try {
-      const slots = enabledDays.map((dayOfWeek) => ({ dayOfWeek, startTime, endTime }))
       const res = await fetch('/api/availability', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -57,42 +121,61 @@ export default function AvailabilityForm({ initialSlots }: { initialSlots: Avail
           <div className="mb-6">
             <div className="text-sm font-black uppercase tracking-[0.18em] text-emerald-700">Horarios</div>
             <h1 className="mt-3 text-4xl font-black tracking-normal">Defina quando clientes podem agendar.</h1>
-            <p className="mt-3 text-sm leading-6 text-slate-600">Este MVP usa uma janela semanal simples. Depois da para adicionar excecoes, feriados e bloqueios.</p>
+            <p className="mt-3 text-sm leading-6 text-slate-600">Use uma ou mais janelas por dia para bloquear almoco, deslocamentos e pausas.</p>
           </div>
 
-          <div className="grid gap-5">
-            <div>
-              <div className="mb-2 text-sm font-bold text-slate-700">Dias disponiveis</div>
-              <div className="grid gap-2 sm:grid-cols-7">
-                {days.map(([label, value]) => {
-                  const active = enabledDays.includes(value)
-                  return (
+          <div className="grid gap-4">
+            {days.map(([label, dayOfWeek]) => {
+              const windows = availability[dayOfWeek]
+              const active = windows.length > 0
+
+              return (
+                <div key={dayOfWeek} className="rounded-lg border border-slate-200 p-4">
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <button
-                      key={value}
                       type="button"
-                      onClick={() => setEnabledDays((current) => active ? current.filter((day) => day !== value) : [...current, value].sort())}
-                      className={`rounded-lg border px-3 py-3 text-sm font-black ${active ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-300 text-slate-700 hover:border-emerald-400'}`}
+                      onClick={() => toggleDay(dayOfWeek)}
+                      className={`rounded-lg border px-4 py-3 text-left text-sm font-black sm:min-w-40 ${active ? 'border-emerald-700 bg-emerald-700 text-white' : 'border-slate-300 text-slate-700 hover:border-emerald-400'}`}
                     >
                       {label}
                     </button>
-                  )
-                })}
-              </div>
-            </div>
+                    <button
+                      type="button"
+                      onClick={() => addWindow(dayOfWeek)}
+                      disabled={slotLimitReached}
+                      className="rounded-lg border border-slate-300 px-4 py-3 text-sm font-black text-slate-950 hover:bg-slate-50 disabled:opacity-60"
+                    >
+                      + adicionar janela
+                    </button>
+                  </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Inicio
-                <input type="time" value={startTime} onChange={(event) => setStartTime(event.target.value)} className="rounded-lg border border-slate-300 px-4 py-3 font-normal outline-none focus:border-emerald-700" />
-              </label>
-              <label className="grid gap-2 text-sm font-bold text-slate-700">
-                Fim
-                <input type="time" value={endTime} onChange={(event) => setEndTime(event.target.value)} className="rounded-lg border border-slate-300 px-4 py-3 font-normal outline-none focus:border-emerald-700" />
-              </label>
-            </div>
+                  {active ? (
+                    <div className="mt-4 grid gap-3">
+                      {windows.map((window, index) => (
+                        <div key={`${dayOfWeek}-${index}`} className="grid gap-3 rounded-lg bg-slate-50 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                          <label className="grid gap-2 text-sm font-bold text-slate-700">
+                            Inicio
+                            <input type="time" value={window.startTime} onChange={(event) => updateWindow(dayOfWeek, index, 'startTime', event.target.value)} className="rounded-lg border border-slate-300 px-4 py-3 font-normal outline-none focus:border-emerald-700" />
+                          </label>
+                          <label className="grid gap-2 text-sm font-bold text-slate-700">
+                            Fim
+                            <input type="time" value={window.endTime} onChange={(event) => updateWindow(dayOfWeek, index, 'endTime', event.target.value)} className="rounded-lg border border-slate-300 px-4 py-3 font-normal outline-none focus:border-emerald-700" />
+                          </label>
+                          <button type="button" onClick={() => removeWindow(dayOfWeek, index)} className="rounded-lg border border-rose-200 px-4 py-3 text-sm font-black text-rose-700 hover:bg-rose-50">
+                            remover
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="mt-4 rounded-lg bg-slate-50 px-4 py-3 text-sm font-bold text-slate-500">Indisponivel</p>
+                  )}
+                </div>
+              )
+            })}
 
             {status && <div className="rounded-lg bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700">{status}</div>}
-            <button onClick={saveAvailability} disabled={saving || enabledDays.length === 0} className="rounded-lg bg-emerald-700 px-5 py-3 text-sm font-black text-white hover:bg-emerald-800 disabled:opacity-60">
+            <button onClick={saveAvailability} disabled={saving || slots.length === 0 || slots.length > 14} className="rounded-lg bg-emerald-700 px-5 py-3 text-sm font-black text-white hover:bg-emerald-800 disabled:opacity-60">
               {saving ? 'Salvando...' : 'Salvar disponibilidade'}
             </button>
           </div>

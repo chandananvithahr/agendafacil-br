@@ -76,7 +76,7 @@ export default async function Dashboard() {
         paymentStatus: 'PAID',
         startTime: { gte: monthStart, lt: nextMonthStart },
       },
-      select: { eventType: { select: { price: true } } },
+      select: { amount: true },
     }),
     prisma.booking.findMany({
       where: {
@@ -96,7 +96,7 @@ export default async function Dashboard() {
     prisma.eventType.count({ where: { userId: user.id } }),
   ])
 
-  const monthlyRevenue = paidMonthBookings.reduce((total, booking) => total + booking.eventType.price, 0)
+  const monthlyRevenue = paidMonthBookings.reduce((total, booking) => total + booking.amount, 0)
   const stats = [
     { label: 'Agendamentos hoje', value: String(todayBookings) },
     { label: 'Esta semana', value: String(weekBookings) },
@@ -208,7 +208,7 @@ export default async function Dashboard() {
             </div>
 
             <div className="rounded-lg border border-slate-200 bg-white p-6">
-              <h2 className="text-xl font-black">Proximos agendamentos</h2>
+              <Link href="/dashboard/bookings" className="text-xl font-black hover:text-emerald-700">Proximos agendamentos</Link>
               {upcomingBookings.length ? (
                 <div className="mt-5 grid gap-3">
                   {upcomingBookings.map((booking) => (

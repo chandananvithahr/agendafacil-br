@@ -106,6 +106,7 @@ model Booking {
   notes         String?
   paymentId     String?       @map("payment_id")
   paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
+  amount        Int           @default(0) @map("amount")
   meetLink      String?       @map("meet_link")
   cancelReason  String?       @map("cancel_reason")
   createdAt     DateTime      @default(now()) @map("created_at")

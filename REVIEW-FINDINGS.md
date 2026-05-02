@@ -58,37 +58,69 @@ Closed in this pass.
 - `src/app/api/webhooks/stripe/route.ts` now handles `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
 - `README.md` documents `STRIPE_PRICE_PRO` and `STRIPE_PRICE_AGENCY`.
 
+### MEDIUM - public booking timezone display only showed the professional timezone
+
+Closed in this pass.
+
+- `src/app/[username]/[eventSlug]/BookingForm.tsx` detects the viewer's IANA timezone client-side.
+- Slot labels and selected summaries now show both professional time and viewer-local time when the zones differ.
+- The API contract is unchanged: `startTime` stays UTC ISO.
+
+### MEDIUM - in-memory rate limiter did not survive serverless cold starts
+
+Closed in this pass.
+
+- `src/lib/rate-limit.ts` now uses `@vercel/kv` sliding-window counters when `KV_REST_API_URL` or `KV_URL` plus `KV_REST_API_TOKEN` are configured.
+- Local development falls back to the previous in-memory limiter and logs the fallback once per process.
+- `README.md` documents the new KV env vars.
+
+### LOW - dashboard `Receita do mes` recomputed against live event prices
+
+Closed in this pass.
+
+- `Booking.amount` snapshots the charged amount at create time.
+- Paid bookings store the event price in cents, while free bookings store `0`.
+- The dashboard monthly revenue stat now sums `booking.amount`.
+
+### LOW - `tailwindcss/typography` was not installed for legal pages
+
+Closed in this pass.
+
+- `@tailwindcss/typography` is installed as a dev dependency.
+- `src/app/globals.css` wires it through Tailwind v4 with `@plugin "@tailwindcss/typography";`.
+- Legal pages keep their existing `prose` classes and now render with typography spacing.
+
+### MEDIUM - Pro/Agency users had no subscription management surface
+
+Closed in this pass.
+
+- `src/app/api/payments/portal/route.ts` creates Stripe Billing Portal sessions for authenticated users with `stripeCustomerId`.
+- `src/app/dashboard/payments/page.tsx` now shows a `Gerenciar assinatura` button and friendly 404 copy when no Stripe customer exists.
+- `README.md` documents the required one-click Stripe Billing Portal dashboard configuration.
+
+### MEDIUM - dashboard lacked a real bookings management surface
+
+Closed in this pass.
+
+- `src/app/dashboard/bookings/page.tsx` lists the authenticated user's bookings across event types in Hoje, Esta semana, and Anteriores sections.
+- Future pending/confirmed bookings can be cancelled via `src/app/api/bookings/[id]/route.ts`, which soft-cancels, sends a cancellation email, and attempts a Stripe refund when possible.
+- The dashboard upcoming-bookings card now links to the full bookings list.
+
+### MEDIUM - availability form only supported one window per selected day
+
+Closed in this pass.
+
+- `src/app/dashboard/availability/AvailabilityForm.tsx` now stores `{ [dayOfWeek]: Array<{ startTime, endTime }> }`.
+- Each day supports stacked start/end windows with `+ adicionar janela` and `remover` controls.
+- The existing PUT schema already allows up to 14 slots, and `buildPublicSlots` already iterates every window for the selected weekday.
+
 ## Open gaps, ordered by likely customer impact
-
-### MEDIUM - public booking timezone is the professional's, but the customer is shown only that timezone
-
-Files: `src/app/[username]/[eventSlug]/page.tsx`, `src/app/[username]/[eventSlug]/BookingForm.tsx`
-
-`buildPublicSlots` localises slots to the professional's timezone. The page shows `fuso {timezone}`, but a customer in another timezone may still misread the booking time. Add client-side timezone detection and show both professional and viewer time.
-
-### MEDIUM - in-memory rate limiter does not survive serverless cold starts
-
-File: `src/lib/rate-limit.ts`
-
-The bucket map lives in one Node process. Good enough for soft launch, but replace with Upstash Redis or Vercel KV before serious traffic.
 
 ### MEDIUM - `next.config.ts` is empty, no `images.remotePatterns` for Google avatars
 
 File: `next.config.ts`
 
 Dashboard does not currently render `user.image`, so this is latent. Configure when avatars are shown.
-
-### LOW - dashboard `Receita do mes` recomputes against the live event price
-
-File: `src/app/dashboard/page.tsx`
-
-The current-month revenue stat sums `eventType.price` joined at query time. If a user raises a service price mid-month, all paid bookings in that month re-price retroactively in the dashboard. Fix later by snapshotting the amount on the `Booking` row at create time (add `Booking.amount Int`) and summing that column.
-
-### LOW - `tailwindcss/typography` not installed but `prose` classes used in legal pages
-
-Files: `src/app/privacidade/page.tsx`, `src/app/termos/page.tsx`
-
-Either install `@tailwindcss/typography` or replace `prose` classes with explicit utilities.
 
 ### LOW - domain still needs production confirmation
 
@@ -104,6 +136,7 @@ Some UI copy references AgendaFacil branding and public links. Set `NEXT_PUBLIC_
 - Booking race handling uses `@@unique([eventTypeId, startTime])` and catches `P2002`.
 - IP rate limit + honeypot are wired into `/api/booking`.
 - App URL / mail-from indirection via `src/lib/app-config.ts`.
+- E2E smoke tests exist for landing, demo, and all 9 SEO routes without requiring live database or Stripe access.
 
 ## Pre-deploy checklist
 

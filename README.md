@@ -36,8 +36,13 @@ STRIPE_SECRET_KEY=sk_test_...                # Pix checkout for paid bookings + 
 STRIPE_PRICE_PRO=price_...                   # recurring monthly Stripe Price for Pro
 STRIPE_PRICE_AGENCY=price_...                # recurring monthly Stripe Price for Agencies
 STRIPE_WEBHOOK_SECRET=whsec_...              # required for /api/webhooks/stripe
+KV_REST_API_URL=https://...                  # Vercel KV / Upstash REST URL for rate limits
+KV_REST_API_TOKEN=...                        # Vercel KV / Upstash REST token
+# KV_URL=...                                 # accepted as a URL fallback when KV_REST_API_URL is absent
 WHATSAPP_API_TOKEN=...                       # optional, queues no-op without it
 ```
+
+If KV is not configured, booking rate limits fall back to a per-process in-memory bucket so local development keeps working.
 
 Supabase pooler trap: use the regional pooler prefix that matches the project. A wrong prefix can surface as `Tenant or user not found`, not as a credentials error.
 
@@ -58,6 +63,8 @@ Stripe setup after first deploy:
 3. Add webhook endpoint `https://<your-domain>/api/webhooks/stripe`.
 4. Subscribe to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
 5. Copy the signing secret into `STRIPE_WEBHOOK_SECRET` and redeploy.
+6. Create a Vercel KV store or Upstash Redis REST database and set `KV_REST_API_URL` plus `KV_REST_API_TOKEN` for durable booking rate limits.
+7. Enable Stripe Billing Portal in the Stripe dashboard so `/dashboard/payments` can open subscription management.
 
 ### Architecture map
 
@@ -67,8 +74,10 @@ Stripe setup after first deploy:
 | `src/app/demo/` | Static booking demo, no database |
 | `src/app/auth/signin/page.tsx` | Google OAuth + email magic-link sign-in |
 | `src/app/dashboard/` | Server-prefetched dashboard, profile, availability, payments |
+| `src/app/dashboard/bookings/` | Authenticated bookings list with customer cancellation actions |
 | `src/app/[username]/[eventSlug]/` | Public booking page with real availability + bookings |
 | `src/app/api/booking/route.ts` | Public booking POST with rate limit, honeypot, availability validation, Pix checkout |
+| `src/app/api/bookings/[id]/route.ts` | Authenticated booking cancellation API with cancellation email + Stripe refund attempt |
 | `src/app/api/webhooks/stripe/route.ts` | Signature-verified Stripe webhook for bookings and subscriptions |
 | `src/lib/auth.ts` | NextAuth config, pt-BR magic-link email, slug + default availability in `events.createUser` |
 | `src/lib/scheduling.ts` | Timezone-correct slot generation via `date-fns-tz` |
@@ -82,6 +91,7 @@ npx tsc --noEmit
 $env:DATABASE_URL='postgresql://user:pass@localhost:5432/agendafacil'
 $env:DIRECT_URL=$env:DATABASE_URL
 npx prisma validate
+npm run test:e2e
 npm run build
 ```
 

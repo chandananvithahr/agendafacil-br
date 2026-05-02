@@ -13,6 +13,7 @@ function PaymentsContent() {
   const search = useSearchParams()
   const [message, setMessage] = useState('')
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null)
+  const [portalLoading, setPortalLoading] = useState(false)
 
   async function startCheckout(plan: 'PRO' | 'AGENCY') {
     setMessage('')
@@ -34,11 +35,37 @@ function PaymentsContent() {
     }
   }
 
+  async function openPortal() {
+    setMessage('')
+    setPortalLoading(true)
+    try {
+      const res = await fetch('/api/payments/portal', { method: 'POST' })
+      const data = await res.json()
+      if (res.ok && data.url) {
+        window.location.href = data.url
+        return
+      }
+      setMessage(data.error ?? 'Nao foi possivel abrir o gerenciamento da assinatura.')
+    } finally {
+      setPortalLoading(false)
+    }
+  }
+
   return (
     <>
       {search.get('checkout') === 'success' && <div className="mb-5 rounded-lg bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">Checkout concluido. O plano sera ativado pelo webhook da Stripe.</div>}
       {search.get('checkout') === 'cancelled' && <div className="mb-5 rounded-lg bg-amber-50 px-4 py-3 text-sm font-bold text-amber-900">Checkout cancelado.</div>}
       {message && <div className="mb-5 rounded-lg bg-slate-100 px-4 py-3 text-sm font-bold text-slate-700">{message}</div>}
+
+      <div className="mb-5 flex flex-col gap-3 rounded-lg border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-lg font-black">Assinatura atual</h2>
+          <p className="mt-1 text-sm leading-6 text-slate-600">Atualize cartao, consulte recibos ou cancele pelo portal seguro da Stripe.</p>
+        </div>
+        <button onClick={openPortal} disabled={portalLoading} className="rounded-lg border border-slate-300 px-5 py-3 text-sm font-black text-slate-950 hover:bg-slate-50 disabled:opacity-60">
+          {portalLoading ? 'Abrindo portal...' : 'Gerenciar assinatura'}
+        </button>
+      </div>
 
       <div className="grid gap-4 md:grid-cols-2">
         {plans.map((plan) => (
