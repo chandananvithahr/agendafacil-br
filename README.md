@@ -46,6 +46,15 @@ If KV is not configured, booking rate limits fall back to a per-process in-memor
 
 Supabase pooler trap: use the regional pooler prefix that matches the project. A wrong prefix can surface as `Tenant or user not found`, not as a credentials error.
 
+### Zero-spend launch
+
+If you want to ship without paying for anything yet, see [`ZERO-SPEND-LAUNCH.md`](./ZERO-SPEND-LAUNCH.md). Short version:
+
+- **Resend free tier (3,000 emails/mo) works today**, but without a verified sender domain it only delivers to your own signup address. Enough to self-test sign-in; not enough to onboard real beta users.
+- **There is no fully-free path to email arbitrary customers.** Cheapest unlock is a $1 `.xyz` first-year promo, or $8 `.com.br`. The Vercel subdomain `saas-clone-br-calendly.vercel.app` cannot be verified as a Resend sender.
+- **WhatsApp is not free at scale.** Twilio gives a $15 trial; recommendation is to leave `WHATSAPP_API_TOKEN` unset (the code no-ops cleanly) and soften the landing-page copy until a customer asks for it.
+- **Stripe account creation is free.** Defer until your first paying user.
+
 ### Deploying to Vercel
 
 ```powershell

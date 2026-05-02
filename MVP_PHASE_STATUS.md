@@ -267,3 +267,14 @@ These cannot be done by tooling alone — accounts need to be set up by a human,
 - **Resend**: verify a sender domain (e.g. `agendafacil.com.br` or your own) → grab `RESEND_API_KEY` → update `MAIL_FROM` to the verified address. Until done, magic-link sign-in throws and free bookings deliver no confirmation email.
 - **Vercel KV / Upstash Redis**: Vercel KV is deprecated; install Upstash Redis from Vercel Marketplace → expose as `KV_REST_API_URL` + `KV_REST_API_TOKEN` (the Upstash integration sets these names). Until done, the booking endpoint falls back to per-process in-memory rate limiting (works, just less effective on serverless).
 - **WhatsApp** (`WHATSAPP_API_TOKEN`): optional. Without it, `queueWhatsAppReminder` is a no-op.
+
+## 2026-05-03 Zero-spend launch decision
+
+User wants to ship without spending money. Full playbook in `ZERO-SPEND-LAUNCH.md`. Key constraints documented there:
+
+- Resend free tier works for self-testing only (no verified domain → can only email own signup address).
+- No fully-free path to email arbitrary customers; cheapest domain is $1 (`.xyz` first-year promo) or $8 (`.com.br`).
+- WhatsApp Business is not free at scale; recommendation is to leave `WHATSAPP_API_TOKEN` unset and soften landing-page copy from "Lembretes no WhatsApp" to "Em breve: lembretes no WhatsApp" until a paying customer asks for it.
+- Stripe account creation is free; defer until first paying user.
+
+Order of operations: (1) sign up for Resend free tier today, add `RESEND_API_KEY`, self-test sign-in; (2) buy a $1–$8 domain when first interested user shows up; (3) Stripe when first paying user shows up; (4) WhatsApp only on demand.

@@ -146,3 +146,14 @@ Some UI copy references AgendaFacil branding and public links. Set `NEXT_PUBLIC_
 4. Subscribe to checkout and subscription events listed in `README.md`.
 5. Verify Resend domain or temporarily set `MAIL_FROM` to a Resend sandbox sender.
 6. Run one real free booking and one real paid Pix booking end-to-end.
+
+## Zero-spend launch path
+
+The user wants to ship without spending money. See `ZERO-SPEND-LAUNCH.md` for the full playbook. Summary of free-tier reality:
+
+- **Resend free tier (3,000 emails/mo)** works today — but without a verified sender domain it only delivers to your own signup email. Enough to self-test sign-in; not enough to onboard real beta users.
+- **No fully-free path to email arbitrary recipients.** A domain costs $1–$8 (cheapest: `.xyz` first-year promo). The Vercel subdomain `saas-clone-br-calendly.vercel.app` cannot be verified as a Resend sender because Vercel owns the apex.
+- **WhatsApp is not free at scale.** Twilio gives a $15 trial credit; Z-API offers a free trial then ~R$50/mo. The code already no-ops cleanly when `WHATSAPP_API_TOKEN` is unset — recommend leaving it unset until a customer asks for it, and softening the landing-page WhatsApp copy to "Em breve" in the meantime.
+- **Stripe account creation is free.** Only takes a card when you want payouts. Sign up only once you have an interested paying user.
+
+Order of operations to actually ship: (1) Resend free tier today for self-testing; (2) buy a $1–$8 domain when first interested user shows up; (3) Stripe account when first paying user shows up; (4) WhatsApp only if customers ask. See `ZERO-SPEND-LAUNCH.md` for command-by-command details.
