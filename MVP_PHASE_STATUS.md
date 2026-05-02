@@ -229,3 +229,41 @@ npm run test:e2e                  → 10 passed in 41.4s (1 landing + 9 SEO rout
 - Ran `prisma generate` so `tsc --noEmit` could see the new `Booking.amount` field. Codex's typecheck had passed because they regenerated in their sandbox; the projects repo had stale client. No code change needed; just regenerated client.
 
 No source code changes were required during verification.
+
+## 2026-05-03 Production Deploy
+
+Resolved the four "environmental" blockers from the prior verification report.
+
+### Database migration applied to Supabase
+
+```text
+ALTER TABLE agendafacil_bookings ADD COLUMN amount INTEGER NOT NULL DEFAULT 0
+prisma migrate resolve --applied 20260502090000_add_booking_amount
+prisma migrate status -> "Database schema is up to date!"
+```
+
+Supabase had the tables but no `_prisma_migrations` history (P3005). Resolved by applying the column directly via `executeRawUnsafe` and then marking the migration as applied so future migrations work normally.
+
+### Vercel production deploy
+
+Production URL: https://saas-clone-br-calendly.vercel.app — returns 200 on `/`, `/demo`, `/auth/signin`, `/agendamento-online-gratis`, `/alternativa-calendly-portugues`, `/pagamento-pix-no-agendamento`, `/sitemap.xml`, `/robots.txt`. Rendered content verified (H1 "Agendamento online com Pix", demo form "Maria Silva" + "Confirmar demonstração").
+
+The first deploy attempt failed with `Type error: 'amount' does not exist on BookingCreateInput` because Vercel's build cache shipped a stale Prisma client. Fixed in commit `b71702c` by changing `package.json` build script to `prisma generate && next build` and adding a `postinstall: prisma generate` hook. Second deploy succeeded.
+
+Note: only the stable alias `saas-clone-br-calendly.vercel.app` is publicly accessible. The per-deploy URLs return 401 because Vercel deployment protection is enabled. Either disable protection in Project Settings → Deployment Protection, or share the stable alias for QA.
+
+### Vercel env vars added
+
+- `NEXT_PUBLIC_APP_URL=https://saas-clone-br-calendly.vercel.app`
+- `MAIL_FROM=AgendaFacil <onboarding@resend.dev>` (Resend sandbox sender; replace once a real domain is verified)
+
+Already present from prior deploy: `DATABASE_URL`, `DIRECT_URL`, `NEXTAUTH_SECRET`, `NEXTAUTH_URL`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`.
+
+### Still pending (require external account access)
+
+These cannot be done by tooling alone — accounts need to be set up by a human, then env vars added with `printf VALUE | vercel env add NAME production`.
+
+- **Stripe**: create account in BR mode → grab `STRIPE_SECRET_KEY` → create two recurring monthly Prices (R$99 PRO, R$199 AGENCY) → grab their IDs → add webhook endpoint `https://saas-clone-br-calendly.vercel.app/api/webhooks/stripe` subscribed to `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted` → grab `STRIPE_WEBHOOK_SECRET` → enable Billing Portal in Settings → Billing → Customer portal. Until done, plan checkout returns 501 with the exact env var name; paid bookings cannot be created (free bookings still work).
+- **Resend**: verify a sender domain (e.g. `agendafacil.com.br` or your own) → grab `RESEND_API_KEY` → update `MAIL_FROM` to the verified address. Until done, magic-link sign-in throws and free bookings deliver no confirmation email.
+- **Vercel KV / Upstash Redis**: Vercel KV is deprecated; install Upstash Redis from Vercel Marketplace → expose as `KV_REST_API_URL` + `KV_REST_API_TOKEN` (the Upstash integration sets these names). Until done, the booking endpoint falls back to per-process in-memory rate limiting (works, just less effective on serverless).
+- **WhatsApp** (`WHATSAPP_API_TOKEN`): optional. Without it, `queueWhatsAppReminder` is a no-op.
