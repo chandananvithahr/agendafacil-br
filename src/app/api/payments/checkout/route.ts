@@ -10,8 +10,8 @@ const checkoutSchema = z.object({
 })
 
 const planPrices = {
-  PRO: { amount: 9900, name: 'AgendaFacil Pro' },
-  AGENCY: { amount: 19900, name: 'AgendaFacil Agencias' },
+  PRO: { priceEnv: 'STRIPE_PRICE_PRO' },
+  AGENCY: { priceEnv: 'STRIPE_PRICE_AGENCY' },
 }
 
 export async function POST(req: NextRequest) {
@@ -30,6 +30,11 @@ export async function POST(req: NextRequest) {
   }
 
   const plan = planPrices[parsed.data.plan]
+  const priceId = process.env[plan.priceEnv]
+  if (!priceId) {
+    return NextResponse.json({ error: `${plan.priceEnv} nao configurada` }, { status: 501 })
+  }
+
   const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, { apiVersion: '2026-04-22.dahlia' })
   const origin = req.headers.get('origin') ?? getAppUrl()
 
@@ -39,12 +44,7 @@ export async function POST(req: NextRequest) {
     line_items: [
       {
         quantity: 1,
-        price_data: {
-          currency: 'brl',
-          unit_amount: plan.amount,
-          recurring: { interval: 'month' },
-          product_data: { name: plan.name },
-        },
+        price: priceId,
       },
     ],
     metadata: {

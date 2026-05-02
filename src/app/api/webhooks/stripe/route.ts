@@ -15,11 +15,15 @@ function asStripeId(value: string | { id: string } | null | undefined) {
   return typeof value === 'string' ? value : value?.id
 }
 
+function isPlan(value: string | undefined): value is Plan {
+  return value === 'PRO' || value === 'AGENCY'
+}
+
 async function activatePlan(session: Stripe.Checkout.Session) {
   const userId = session.metadata?.userId
-  const plan = session.metadata?.plan as Plan | undefined
+  const plan = session.metadata?.plan
 
-  if (!userId || !plan || !['PRO', 'AGENCY'].includes(plan)) return
+  if (!userId || !isPlan(plan)) return
 
   await prisma.user.update({
     where: { id: userId },
@@ -28,6 +32,39 @@ async function activatePlan(session: Stripe.Checkout.Session) {
       stripeCustomerId: asStripeId(session.customer) ?? undefined,
       stripeSubscriptionId: asStripeId(session.subscription) ?? undefined,
     },
+  })
+}
+
+async function syncSubscription(subscription: Stripe.Subscription) {
+  const userId = subscription.metadata.userId
+  const plan = subscription.metadata.plan
+  if (!userId || !isPlan(plan)) return
+
+  const active = ['active', 'trialing', 'past_due'].includes(subscription.status)
+  await prisma.user.update({
+    where: { id: userId },
+    data: {
+      plan: active ? plan : 'FREE',
+      stripeCustomerId: asStripeId(subscription.customer) ?? undefined,
+      stripeSubscriptionId: active ? subscription.id : null,
+    },
+  })
+}
+
+async function cancelSubscription(subscription: Stripe.Subscription) {
+  const userId = subscription.metadata.userId
+
+  if (userId) {
+    await prisma.user.update({
+      where: { id: userId },
+      data: { plan: 'FREE', stripeSubscriptionId: null },
+    })
+    return
+  }
+
+  await prisma.user.updateMany({
+    where: { stripeSubscriptionId: subscription.id },
+    data: { plan: 'FREE', stripeSubscriptionId: null },
   })
 }
 
@@ -103,6 +140,14 @@ export async function POST(req: NextRequest) {
         data: { paymentStatus: 'UNPAID', status: 'PENDING' },
       })
     }
+  }
+
+  if (event.type === 'customer.subscription.created' || event.type === 'customer.subscription.updated') {
+    await syncSubscription(event.data.object as Stripe.Subscription)
+  }
+
+  if (event.type === 'customer.subscription.deleted') {
+    await cancelSubscription(event.data.object as Stripe.Subscription)
   }
 
   return NextResponse.json({ received: true })

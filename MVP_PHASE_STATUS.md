@@ -88,6 +88,10 @@ Claude review flagged that the first-pass MVP looked complete but still had bloc
 - Wrapped dashboard payments search params in `Suspense`.
 - Removed hardcoded `/og-image.png` metadata reference and moved app URLs toward env-driven config.
 - Regenerated Prisma Client after the schema change.
+- Closed the follow-up punch list: dashboard/profile/availability now server-prefetch user data and show route skeletons.
+- Magic-link sign-in email now uses a pt-BR Resend template with the CTA `Entrar no AgendaFacil`.
+- Plan checkout now uses real recurring Stripe Price IDs from `STRIPE_PRICE_PRO` and `STRIPE_PRICE_AGENCY`; no inline fallback prices are invented.
+- Stripe webhook now also handles `customer.subscription.created`, `customer.subscription.updated`, and `customer.subscription.deleted`.
 
 External Week 3 and Week 4 tasks still require accounts and real-world execution outside this sandbox:
 
@@ -136,6 +140,8 @@ GOOGLE_CLIENT_ID
 GOOGLE_CLIENT_SECRET
 STRIPE_SECRET_KEY
 NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY
+STRIPE_PRICE_PRO
+STRIPE_PRICE_AGENCY
 STRIPE_WEBHOOK_SECRET
 RESEND_API_KEY
 WHATSAPP_API_TOKEN
@@ -144,3 +150,28 @@ WHATSAPP_API_TOKEN
 ## Recommended Next Runtime Step
 
 Move or copy this build into a writable git repo, add the production environment variables, then run the same verification commands on a normal PowerShell session or CI host without the `spawn EPERM` restriction.
+
+## Outstanding for Claude
+
+The follow-up punch-list code has been implemented and verified in this writable copy, but this Codex session could not publish it to `C:\Users\chand\projects\saas-clone-br-calendly` or GitHub:
+
+- Direct patch to `C:\Users\chand\projects\saas-clone-br-calendly` was rejected because the path is outside the writable sandbox.
+- `git ls-remote https://github.com/chandananvithahr/agendafacil-br.git refs/heads/master` failed with `SEC_E_NO_CREDENTIALS`.
+- `gh auth status` failed because `C:\Users\chand\AppData\Roaming\GitHub CLI\config.yml` is access denied.
+- GitHub connector `_update_file` failed with `403 Resource not accessible by integration`.
+
+Verified in `C:\Users\chand\million-dollar-business-30days\_work\saas-clone-br-calendly-build`:
+
+```powershell
+npm.cmd run lint
+npx.cmd --no-install tsc --noEmit
+$env:DATABASE_URL='postgresql://user:pass@localhost:5432/agendafacil'; $env:DIRECT_URL='postgresql://user:pass@localhost:5432/agendafacil'; npx.cmd --no-install prisma validate
+```
+
+To land it, copy the changed files from this writable build copy into the real repo, then run:
+
+```powershell
+git add -A
+git commit -m "feat: dashboard prefetch + pt-BR magic-link + subscription mode"
+git push origin master
+```
