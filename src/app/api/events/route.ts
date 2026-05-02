@@ -21,7 +21,7 @@ export async function GET() {
   }
 
   const events = await prisma.eventType.findMany({
-    where: { userId: (session.user as any).id },
+    where: { userId: session.user.id },
     orderBy: { createdAt: 'desc' },
   })
 
@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
   }
 
   const { title, slug, description, duration, price, requiresPayment, location } = parsed.data
-  const userId = (session.user as any).id
+  const userId = session.user.id
 
   const existing = await prisma.eventType.findFirst({ where: { userId, slug } })
   if (existing) {

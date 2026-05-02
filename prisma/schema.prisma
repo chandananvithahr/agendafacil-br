@@ -3,38 +3,41 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 model User {
   id                   String    @id @default(cuid())
   name                 String?
   email                String    @unique
-  emailVerified        DateTime?
+  emailVerified        DateTime? @map("email_verified")
   image                String?
-  slug                 String    @unique
+  slug                 String    @unique @default(cuid())
   timezone             String    @default("America/Sao_Paulo")
   phone                String?
   cpf                  String?
   plan                 Plan      @default(FREE)
-  stripeCustomerId     String?
-  stripeSubscriptionId String?
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  stripeSubscriptionId String?   @map("stripe_subscription_id")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
 
   accounts     Account[]
   sessions     Session[]
   eventTypes   EventType[]
   availability Availability[]
+
+  @@map("agendafacil_users")
 }
 
 model Account {
   id                String  @id @default(cuid())
-  userId            String
+  userId            String  @map("user_id")
   type              String
   provider          String
-  providerAccountId String
+  providerAccountId String  @map("provider_account_id")
   refresh_token     String? @db.Text
   access_token      String? @db.Text
   expires_at        Int?
@@ -46,15 +49,18 @@ model Account {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
+  @@map("agendafacil_accounts")
 }
 
 model Session {
   id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
   expires      DateTime
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("agendafacil_sessions")
 }
 
 model VerificationToken {
@@ -63,57 +69,64 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+  @@map("agendafacil_verification_tokens")
 }
 
 model EventType {
-  id              String  @id @default(cuid())
-  userId          String
+  id              String   @id @default(cuid())
+  userId          String   @map("user_id")
   title           String
   slug            String
   description     String?
-  duration        Int     @default(30)
-  price           Int     @default(0)
-  currency        String  @default("BRL")
-  requiresPayment Boolean @default(false)
-  locations       Json    @default("[]")
-  isActive        Boolean @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  duration        Int      @default(30)
+  price           Int      @default(0)
+  currency        String   @default("BRL")
+  requiresPayment Boolean  @default(false) @map("requires_payment")
+  locations       Json     @default("[]")
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookings Booking[]
 
   @@unique([userId, slug])
+  @@map("agendafacil_event_types")
 }
 
 model Booking {
   id            String        @id @default(cuid())
-  eventTypeId   String
-  startTime     DateTime
-  endTime       DateTime
+  eventTypeId   String        @map("event_type_id")
+  startTime     DateTime      @map("start_time")
+  endTime       DateTime      @map("end_time")
   status        BookingStatus @default(PENDING)
-  guestName     String
-  guestEmail    String
-  guestPhone    String?
+  guestName     String        @map("guest_name")
+  guestEmail    String        @map("guest_email")
+  guestPhone    String?       @map("guest_phone")
   notes         String?
-  paymentId     String?
-  paymentStatus PaymentStatus @default(UNPAID)
-  meetLink      String?
-  cancelReason  String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
+  paymentId     String?       @map("payment_id")
+  paymentStatus PaymentStatus @default(UNPAID) @map("payment_status")
+  meetLink      String?       @map("meet_link")
+  cancelReason  String?       @map("cancel_reason")
+  createdAt     DateTime      @default(now()) @map("created_at")
+  updatedAt     DateTime      @updatedAt @map("updated_at")
 
   eventType EventType @relation(fields: [eventTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([eventTypeId, startTime])
+  @@map("agendafacil_bookings")
 }
 
 model Availability {
   id        String @id @default(cuid())
-  userId    String
-  dayOfWeek Int
-  startTime String
-  endTime   String
+  userId    String @map("user_id")
+  dayOfWeek Int    @map("day_of_week")
+  startTime String @map("start_time")
+  endTime   String @map("end_time")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("agendafacil_availability")
 }
 
 enum Plan {
