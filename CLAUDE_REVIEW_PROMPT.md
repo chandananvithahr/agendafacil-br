@@ -3,7 +3,7 @@
 Point Claude at:
 
 ```text
-C:\Users\chand\million-dollar-business-30days\_work\saas-clone-br-calendly-commit-worktree
+C:\Users\chand\projects\saas-clone-br-calendly
 ```
 
 Then paste:
@@ -13,11 +13,11 @@ Review and land the AgendaFacil handoff from Codex.
 
 Context:
 - Base commit: ff86709 on master.
-- Local handoff commit: 5fab9f0 feat: complete medium launch surfaces.
+- Pushed GitHub commit: c14139e feat: complete medium launch surfaces.
 - Target real repo: C:\Users\chand\projects\saas-clone-br-calendly.
 - GitHub repo: github.com/chandananvithahr/agendafacil-br.
 - Codex could not write directly to the target repo because the target path was outside its writable sandbox.
-- Codex could not push because Git HTTPS failed with SEC_E_NO_CREDENTIALS.
+- Codex could not push from its sandbox because Git HTTPS failed with SEC_E_NO_CREDENTIALS; the user applied the handoff patch and pushed c14139e from normal PowerShell.
 
 Read these files first:
 - CLAUDE_ISSUE_LOG.md
@@ -37,7 +37,7 @@ Your job:
    - multiple availability windows per weekday
    - Playwright public smoke tests for landing, demo, and 9 SEO routes
 3. Verify acceptance criteria listed in CLAUDE_REVIEW_ISSUE_LOG.md.
-4. Land the changes into C:\Users\chand\projects\saas-clone-br-calendly if they are safe.
+4. Confirm c14139e is present on master and review it in place.
 5. Run verification from the real repo:
 
    npm.cmd install
@@ -54,7 +54,7 @@ Your job:
 7. Commit and push to origin master if credentials are available.
 
 Known blockers from Codex, not code defects:
-- push from Codex failed with SEC_E_NO_CREDENTIALS
+- push from Codex failed with SEC_E_NO_CREDENTIALS, but the user pushed c14139e successfully from normal PowerShell
 - next build compiled successfully, then failed with sandbox spawn EPERM
 - npm run test:e2e failed in sandbox with spawn EPERM when Playwright tried to spawn the web server
 - prisma migrate dev was not run against a live database in Codex; manual SQL migration exists at prisma/migrations/20260502090000_add_booking_amount/migration.sql

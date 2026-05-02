@@ -2,7 +2,7 @@
 
 Date: 2026-05-02
 Base commit: `ff86709`
-Review target: the latest local handoff commit on `master`
+Review target: pushed GitHub commit `c14139e` on `master`
 Primary handoff log: `CLAUDE_ISSUE_LOG.md`
 
 ## Review Request

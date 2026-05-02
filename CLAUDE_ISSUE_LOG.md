@@ -4,6 +4,7 @@ Date: 2026-05-02
 Base commit: `ff86709`
 Writable build copy: `C:\Users\chand\million-dollar-business-30days\_work\saas-clone-br-calendly-build`
 Target repo requested by user: `C:\Users\chand\projects\saas-clone-br-calendly`
+Pushed GitHub commit: `c14139e`
 
 ## Current Status
 
@@ -17,6 +18,12 @@ All 8 requested tasks were implemented in the writable build copy:
 - Dashboard bookings list with cancel action, cancellation email, and refund attempt.
 - Multiple availability windows per weekday.
 - Playwright public smoke tests for landing, demo, and 9 SEO routes.
+
+The user applied the handoff patch in the real repo and pushed it successfully:
+
+```text
+ff86709..c14139e  master -> master
+```
 
 For Claude review instructions, use `CLAUDE_REVIEW_ISSUE_LOG.md`. It defines the exact review scope, acceptance criteria, known non-code blockers, and expected output format. If you need a paste-ready prompt, use `CLAUDE_REVIEW_PROMPT.md`.
 
@@ -50,15 +57,17 @@ C:\Users\chand\million-dollar-business-30days\_work\saas-clone-br-calendly-build
 
 Claude should either open this writable build copy directly or copy its files into the real repo.
 
-### 2. Push is still blocked by credentials
+### 2. Codex push is still blocked by credentials
 
-Final push attempt from the local handoff commit failed:
+Final push attempt from the Codex sandbox failed:
 
 ```text
 fatal: unable to access 'https://github.com/chandananvithahr/agendafacil-br.git/': schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS (0x8009030E) - No credentials are available in the security package
 ```
 
 GitHub CLI was also blocked by an access-denied config path, and the GitHub connector returned 403.
+
+This did not block landing because the user pushed `c14139e` from normal PowerShell.
 
 ### 3. Prisma migration was written manually
 
